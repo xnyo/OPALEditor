@@ -74,6 +74,19 @@ namespace RegionsCSV
         public static float Deg2Rad(float deg) => deg * (float)Math.PI / 180.0f;
     }
 
+    public class EncodableOPAL
+    {
+        public List<EncodableOPALObject> Objects { get; set; } = new();
+
+        public void EncodeBinary(BinaryWriter w)
+        {
+            w.Write(0); // unknown, always 0?
+            w.Write(Objects.Count);
+            foreach (var record in Objects)
+                record.EncodeBinary(w);
+        }
+    }
+
     public class Options
     {
         [Value(
@@ -162,15 +175,12 @@ namespace RegionsCSV
                 }
             }
             using var w = new BinaryWriter(File.Open(outputFileName, FileMode.Create));
-            w.Write(0); // unknown, always 0?
-            w.Write(records.Count);
-            foreach (var record in records)
+            new EncodableOPAL
             {
-                formKeys.TryGetValue(record.EditorID.ToLower(), out var fk);
-                if (fk.IsNull)
-                    throw new Exception($"Could not find form id for {record.EditorID}");
-                record.ToEncodable(fk).EncodeBinary(w);
-            }
+                Objects = records
+                    .Select(x => x.ToEncodable(formKeys[x.EditorID.ToLower()]))
+                    .ToList()
+            }.EncodeBinary(w);
         }
 
         public static void Main(string[] args)
