@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using CommandLine;
 using CsvHelper;
+using CsvHelper.Configuration;
 using Mutagen.Bethesda;
 using Mutagen.Bethesda.Environments;
 using Mutagen.Bethesda.Plugins;
@@ -147,8 +148,15 @@ namespace RegionsCSV
             List<OPALObject> records;
             using var reader = new StreamReader(opts.FileName);
             {
-                using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-                records = csv.GetRecords<OPALObject>().ToList();
+                using var csv = new CsvReader(
+                    reader,
+                    new CsvConfiguration(CultureInfo.InvariantCulture)
+                    {
+                        ShouldSkipRecord = args =>
+                            args.Row.Parser.Record.All(string.IsNullOrWhiteSpace)
+                    }
+                );
+                records = csv.GetRecords<OPALObject>().Where(x => x.EditorID != "").ToList();
             }
             var wantedFormKeys = records.Select(x => x.EditorID.ToLower()).ToHashSet();
             var formKeys = new Dictionary<string, FormKey>();
